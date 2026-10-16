@@ -80,6 +80,15 @@ describe('3x9 Winning Logic & Claims', () => {
     expect(checkWinningCategory(dummyTicket, [2, 24, 46, 68, 90], WinningCategory.BOTTOM_LINE)).toBe(true);
   });
 
+  it('should accurately detect Four Corners', () => {
+    // Four corners of dummyTicket are:
+    // Top row first: 1, last: 88
+    // Bottom row first: 2, last: 90
+    expect(checkWinningCategory(dummyTicket, [1, 88, 2], WinningCategory.FOUR_CORNERS)).toBe(false);
+    expect(checkWinningCategory(dummyTicket, [1, 88, 2, 90], WinningCategory.FOUR_CORNERS)).toBe(true);
+    expect(getCategoryWinIndex(dummyTicket, [99, 1, 55, 88, 2, 70, 90], WinningCategory.FOUR_CORNERS)).toBe(6);
+  });
+
   it('should require all 15 numbers for Full House', () => {
     const all15 = dummyTicket.flat().filter((n) => n > 0);
     const first14 = all15.slice(0, 14);

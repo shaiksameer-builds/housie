@@ -3,18 +3,35 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 10, 15, 29;
-  --background-end-rgb: 15, 23, 42;
+  --foreground-rgb: 248, 250, 252;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background-color: #0c071e;
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(139, 92, 246, 0.15) 0px, transparent 55%),
+    radial-gradient(at 85% 25%, rgba(245, 158, 11, 0.12) 0px, transparent 50%),
+    radial-gradient(at 50% 85%, rgba(99, 102, 241, 0.12) 0px, transparent 55%);
+  background-attachment: fixed;
   min-height: 100vh;
+}
+
+/* Custom festive scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0c071e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #261655;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3c247d;
 }

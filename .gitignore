@@ -1,6 +1,9 @@
 node_modules
 .next
 .env
-dev.db
-dev.db-journal
+.env*.local
+*.db
+*.db-journal
 *.log
+.vercel
+tsconfig.tsbuildinfo

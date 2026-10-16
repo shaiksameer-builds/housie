@@ -30,11 +30,34 @@ export function checkWinningCategory(
       return checkRow(ticket, 1, calledSet);
     case WinningCategory.BOTTOM_LINE:
       return checkRow(ticket, 2, calledSet);
+    case WinningCategory.FOUR_CORNERS:
+      return checkFourCorners(ticket, calledSet);
     case WinningCategory.FULL_HOUSE:
       return checkFullHouse(ticket, calledSet);
     default:
       return false;
   }
+}
+
+/**
+ * Gets the four corners of a 3x9 ticket:
+ * First and last numbers of top row (row 0), and first and last numbers of bottom row (row 2).
+ */
+export function getFourCorners(ticket: number[][]): number[] {
+  if (ticket.length < 3) return [];
+  const top = ticket[0].filter((n) => n > 0);
+  const bottom = ticket[2].filter((n) => n > 0);
+  if (top.length === 0 || bottom.length === 0) return [];
+  return [top[0], top[top.length - 1], bottom[0], bottom[bottom.length - 1]];
+}
+
+/**
+ * Checks if all 4 corners have been called.
+ */
+function checkFourCorners(ticket: number[][], calledSet: Set<number>): boolean {
+  const corners = getFourCorners(ticket);
+  if (corners.length < 4) return false;
+  return corners.every((num) => calledSet.has(num));
 }
 
 /**
@@ -101,6 +124,17 @@ export function getCategoryWinIndex(
       if (rowIdx < 0) return -1;
       const rowNumbers = ticket[rowIdx].filter((n) => n > 0);
       const remaining = new Set(rowNumbers);
+      for (let i = 0; i < calledNumbers.length; i++) {
+        remaining.delete(calledNumbers[i]);
+        if (remaining.size === 0) return i;
+      }
+      return -1;
+    }
+
+    case WinningCategory.FOUR_CORNERS: {
+      const corners = getFourCorners(ticket);
+      if (corners.length < 4) return -1;
+      const remaining = new Set(corners);
       for (let i = 0; i < calledNumbers.length; i++) {
         remaining.delete(calledNumbers[i]);
         if (remaining.size === 0) return i;

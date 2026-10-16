@@ -66,20 +66,20 @@ export default function RoomStatsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-        <div className="text-slate-400 text-sm">Loading statistics...</div>
+      <main className="min-h-screen bg-festive-950 text-slate-100 flex items-center justify-center p-4">
+        <div className="text-purple-300 text-sm font-semibold animate-pulse">Loading statistics...</div>
       </main>
     );
   }
 
   if (error || !stats) {
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full text-center shadow-xl">
+      <main className="min-h-screen bg-festive-950 text-slate-100 flex items-center justify-center p-4">
+        <div className="bg-festive-900 border border-festive-800 rounded-3xl p-8 max-w-md w-full text-center shadow-xl">
           <p className="text-rose-400 font-bold mb-4">{error || 'Stats unavailable'}</p>
           <Link
             href="/"
-            className="inline-block bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm"
+            className="inline-block bg-festive-800 hover:bg-festive-700 text-white font-bold py-2.5 px-5 rounded-xl text-sm"
           >
             Back to Home
           </Link>
@@ -106,27 +106,27 @@ export default function RoomStatsPage() {
   const leaderboard = Array.from(playerWins.values()).sort((a, b) => b.wins - a.wins);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 pb-16">
+    <main className="min-h-screen bg-festive-950 text-slate-100 pb-16 selection:bg-festive-gold selection:text-festive-950">
       {/* Navbar */}
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-festive-800/80 bg-festive-900/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
             href={`/room/${roomCode}`}
-            className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+            className="w-9 h-9 rounded-xl bg-festive-850 hover:bg-festive-800 border border-festive-700/80 flex items-center justify-center text-purple-200 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="font-bold text-lg text-white">Room Leaderboard & Stats</h1>
-            <p className="text-xs text-slate-400">
-              {stats.roomName} &bull; <span className="font-mono text-emerald-400">{roomCode}</span>
+            <h1 className="font-extrabold text-lg text-white">Room Leaderboard &amp; Stats</h1>
+            <p className="text-xs text-purple-200/70">
+              {stats.roomName} &bull; <span className="font-mono text-amber-300 font-bold">{roomCode}</span>
             </p>
           </div>
         </div>
 
         <Link
           href={`/room/${roomCode}`}
-          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2 px-4 rounded-xl text-xs shadow-lg transition-all"
+          className="bg-gradient-to-r from-festive-gold to-amber-400 hover:from-amber-400 text-festive-950 font-black py-2.5 px-4 rounded-xl text-xs shadow-lg transition-all"
         >
           Return to Game
         </Link>
@@ -135,62 +135,62 @@ export default function RoomStatsPage() {
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
         {/* Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
-            <span className="text-xs text-slate-400 block mb-1 flex items-center gap-1.5">
-              <Trophy className="w-4 h-4 text-amber-400" /> Total Rounds
+          <div className="bg-festive-900/90 border border-festive-800 rounded-3xl p-5 shadow-xl">
+            <span className="text-xs text-purple-200/70 block mb-1 flex items-center gap-1.5 font-semibold">
+              <Trophy className="w-4 h-4 text-festive-gold" /> Total Rounds
             </span>
             <span className="text-2xl font-black text-white">{stats.totalRounds}</span>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
-            <span className="text-xs text-slate-400 block mb-1 flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-emerald-400" /> Players
+          <div className="bg-festive-900/90 border border-festive-800 rounded-3xl p-5 shadow-xl">
+            <span className="text-xs text-purple-200/70 block mb-1 flex items-center gap-1.5 font-semibold">
+              <Users className="w-4 h-4 text-festive-gold" /> Players
             </span>
             <span className="text-2xl font-black text-white">{stats.totalPlayers}</span>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
-            <span className="text-xs text-slate-400 block mb-1 flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-teal-400" /> Total Claims Won
+          <div className="bg-festive-900/90 border border-festive-800 rounded-3xl p-5 shadow-xl">
+            <span className="text-xs text-purple-200/70 block mb-1 flex items-center gap-1.5 font-semibold">
+              <Award className="w-4 h-4 text-festive-gold" /> Total Claims Won
             </span>
             <span className="text-2xl font-black text-white">{stats.totalClaims}</span>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
-            <span className="text-xs text-slate-400 block mb-1 flex items-center gap-1.5">
-              <Hash className="w-4 h-4 text-indigo-400" /> Numbers Called
+          <div className="bg-festive-900/90 border border-festive-800 rounded-3xl p-5 shadow-xl">
+            <span className="text-xs text-purple-200/70 block mb-1 flex items-center gap-1.5 font-semibold">
+              <Hash className="w-4 h-4 text-festive-gold" /> Numbers Called
             </span>
             <span className="text-2xl font-black text-white">{stats.totalNumbersCalled}</span>
           </div>
         </div>
 
         {/* Leaderboard Table */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div className="bg-festive-900/90 border border-festive-800 rounded-3xl p-6 shadow-xl">
           <div className="flex items-center gap-2 mb-4">
-            <Trophy className="w-5 h-5 text-amber-400" />
-            <h3 className="font-bold text-white text-lg">Player Leaderboard</h3>
+            <Trophy className="w-5 h-5 text-festive-gold" />
+            <h3 className="font-extrabold text-white text-lg">Player Leaderboard</h3>
           </div>
 
           {leaderboard.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-xs text-slate-400 uppercase tracking-wider">
+                  <tr className="border-b border-festive-800 text-xs text-purple-300 uppercase tracking-wider">
                     <th className="pb-3 px-4">Rank</th>
                     <th className="pb-3 px-4">Player</th>
                     <th className="pb-3 px-4 text-right">Total Wins</th>
                     <th className="pb-3 px-4 text-right">Full Houses</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-festive-800/60">
                   {leaderboard.map((player, idx) => (
-                    <tr key={player.name} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={player.name} className="hover:bg-festive-800/30 transition-colors">
                       <td className="py-3 px-4 font-mono font-bold text-slate-400">
                         {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
                       </td>
                       <td className="py-3 px-4 font-bold text-white">{player.name}</td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-400">{player.wins}</td>
-                      <td className="py-3 px-4 text-right font-semibold text-amber-400">
+                      <td className="py-3 px-4 text-right font-extrabold text-amber-300">{player.wins}</td>
+                      <td className="py-3 px-4 text-right font-bold text-festive-gold">
                         {player.fullHouseWins}
                       </td>
                     </tr>
@@ -199,22 +199,22 @@ export default function RoomStatsPage() {
               </table>
             </div>
           ) : (
-            <p className="text-sm text-slate-500 py-4 text-center">No category claims recorded yet.</p>
+            <p className="text-sm text-purple-300/50 py-4 text-center">No category claims recorded yet.</p>
           )}
         </div>
 
         {/* Round History */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div className="bg-festive-900/90 border border-festive-800 rounded-3xl p-6 shadow-xl">
           <div className="flex items-center gap-2 mb-4">
-            <Calendar className="w-5 h-5 text-teal-400" />
-            <h3 className="font-bold text-white text-lg">Round History</h3>
+            <Calendar className="w-5 h-5 text-festive-gold" />
+            <h3 className="font-extrabold text-white text-lg">Round History</h3>
           </div>
 
           <div className="space-y-4">
             {stats.roundHistory.map((round) => (
               <div
                 key={round.roundId}
-                className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="p-4 rounded-2xl bg-festive-950 border border-festive-800 flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -229,9 +229,9 @@ export default function RoomStatsPage() {
                       {round.status}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-purple-200/70">
                     {round.totalNumbersCalled} numbers called
-                    {round.duration ? ` &bull; Duration: ${Math.floor(round.duration / 60)}m ${round.duration % 60}s` : ''}
+                    {round.duration ? ` • Duration: ${Math.floor(round.duration / 60)}m ${round.duration % 60}s` : ''}
                   </p>
                 </div>
 
@@ -240,9 +240,9 @@ export default function RoomStatsPage() {
                   {round.claims.map((claim) => (
                     <span
                       key={claim.category}
-                      className="text-xs bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg text-slate-300 font-medium"
+                      className="text-xs bg-festive-900 border border-festive-800 px-3 py-1.5 rounded-xl text-slate-200 font-medium"
                     >
-                      <strong className="text-emerald-400">
+                      <strong className="text-amber-300">
                         {WINNING_CATEGORY_LABELS[claim.category as WinningCategory] || claim.category}:
                       </strong>{' '}
                       {claim.playerName}

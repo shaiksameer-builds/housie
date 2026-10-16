@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Trophy, CheckCircle, ShieldAlert } from 'lucide-react';
+import { Trophy, CheckCircle, Sparkles } from 'lucide-react';
 import { WinningCategory, WINNING_CATEGORY_LABELS, type CategoryClaim } from '@/lib/game/types';
 
 interface ClaimPanelProps {
@@ -23,13 +23,26 @@ export function ClaimPanel({
   claims.forEach((c) => claimMap.set(c.category, c));
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-xl">
-      <div className="flex items-center gap-2 mb-4">
-        <Trophy className="w-5 h-5 text-amber-400" />
-        <h3 className="font-bold text-white text-base md:text-lg">Winning Categories</h3>
+    <div className="bg-festive-900/90 border border-festive-800 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-md">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-festive-gold/20 text-festive-gold flex items-center justify-center">
+            <Trophy className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-white text-base sm:text-lg">Winning Prizes</h3>
+            <p className="text-[11px] text-purple-200/70">
+              Tap &ldquo;Claim&rdquo; when your ticket achieves a category
+            </p>
+          </div>
+        </div>
+
+        <span className="text-xs bg-festive-850 text-amber-300 font-mono font-bold px-2.5 py-1 rounded-full border border-festive-700">
+          {claims.length} / {enabledCategories.length} Won
+        </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         {enabledCategories.map((category) => {
           const claim = claimMap.get(category);
           const isWon = Boolean(claim);
@@ -38,25 +51,35 @@ export function ClaimPanel({
           return (
             <div
               key={category}
-              className={`rounded-xl p-3 border transition-all flex flex-col justify-between ${
+              className={`rounded-2xl p-3.5 border transition-all flex flex-col justify-between ${
                 isWon
                   ? isMyWin
-                    ? 'bg-emerald-950/60 border-emerald-500/80 shadow-md shadow-emerald-500/10'
-                    : 'bg-slate-950/80 border-slate-800'
-                  : 'bg-slate-950/40 border-slate-800 hover:border-slate-700'
+                    ? 'bg-emerald-950/80 border-emerald-400 shadow-lg shadow-emerald-500/10'
+                    : 'bg-festive-950/80 border-festive-800/80'
+                  : 'bg-festive-950/50 border-festive-800 hover:border-festive-700'
               }`}
             >
               <div className="mb-2">
-                <span className="text-xs font-semibold text-slate-400 block mb-1">
-                  {WINNING_CATEGORY_LABELS[category]}
-                </span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-black text-amber-200">
+                    {WINNING_CATEGORY_LABELS[category] || category}
+                  </span>
+                  {category === WinningCategory.FULL_HOUSE && (
+                    <span className="text-[10px] bg-festive-gold/20 text-amber-300 font-bold px-1.5 py-0.5 rounded">
+                      Grand
+                    </span>
+                  )}
+                </div>
+
                 {isWon ? (
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    <span>{claim?.playerName} {isMyWin && '(You)'}</span>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-950/60 p-1.5 rounded-lg border border-emerald-500/30">
+                    <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">
+                      {claim?.playerName} {isMyWin && '(You! 🎉)'}
+                    </span>
                   </div>
                 ) : (
-                  <span className="text-xs text-amber-500/90 font-medium">Unclaimed</span>
+                  <span className="text-[11px] text-purple-300/60 font-medium">Available</span>
                 )}
               </div>
 
@@ -65,9 +88,10 @@ export function ClaimPanel({
                   type="button"
                   disabled={isClaiming}
                   onClick={() => onClaim(category)}
-                  className="w-full mt-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold py-1.5 px-3 rounded-lg text-xs transition-colors disabled:opacity-50"
+                  className="w-full mt-1.5 bg-gradient-to-r from-festive-gold via-amber-400 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-festive-950 font-black py-2 px-3 rounded-xl text-xs shadow-md shadow-festive-gold/15 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-1.5"
                 >
-                  Claim Win
+                  <Sparkles className="w-3 h-3 fill-festive-950" />
+                  <span>Claim {WINNING_CATEGORY_LABELS[category]}</span>
                 </button>
               )}
             </div>

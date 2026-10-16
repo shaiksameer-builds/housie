@@ -13,14 +13,16 @@ export enum WinningCategory {
   TOP_LINE = 'top_line',
   MIDDLE_LINE = 'middle_line',
   BOTTOM_LINE = 'bottom_line',
+  FOUR_CORNERS = 'four_corners',
   FULL_HOUSE = 'full_house',
 }
 
 export const WINNING_CATEGORY_LABELS: Record<WinningCategory, string> = {
   [WinningCategory.EARLY_FIVE]: 'Early Five',
-  [WinningCategory.TOP_LINE]: 'Top Line (Row 1)',
-  [WinningCategory.MIDDLE_LINE]: 'Middle Line (Row 2)',
-  [WinningCategory.BOTTOM_LINE]: 'Bottom Line (Row 3)',
+  [WinningCategory.TOP_LINE]: 'Top Line',
+  [WinningCategory.MIDDLE_LINE]: 'Middle Line',
+  [WinningCategory.BOTTOM_LINE]: 'Bottom Line',
+  [WinningCategory.FOUR_CORNERS]: 'Four Corners',
   [WinningCategory.FULL_HOUSE]: 'Full House',
 };
 

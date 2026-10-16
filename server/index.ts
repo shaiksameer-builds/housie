@@ -21,13 +21,37 @@ import crypto from 'crypto';
 const prisma = new PrismaClient();
 const gameEngine = new GameEngine();
 
-const PORT = parseInt(process.env.SOCKET_PORT || '3001', 10);
+const shouldServeNext = process.env.SERVE_NEXT === 'true';
+const PORT = parseInt(
+  shouldServeNext
+    ? (process.env.PORT || '3000')
+    : (process.env.SOCKET_PORT || '3001'),
+  10
+);
+const dev = process.env.NODE_ENV !== 'production';
+
+let nextApp: any = null;
+let nextHandler: any = null;
+
+if (shouldServeNext) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const next = require('next');
+    nextApp = next({ dev });
+    nextHandler = nextApp.getRequestHandler();
+  } catch (err) {
+    console.warn('Next.js handler could not be loaded:', err);
+  }
+}
 
 const httpServer = createServer((req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
     return;
+  }
+  if (nextHandler) {
+    return nextHandler(req, res);
   }
   res.writeHead(404);
   res.end();
@@ -513,7 +537,7 @@ io.on('connection', (socket) => {
 
       const onComplete = () => {
         broadcastGameState(mapping.roomId);
-        broadcastEvent(mapping.roomId, 'all_called', 'All 100 numbers have been called!');
+        broadcastEvent(mapping.roomId, 'all_called', 'All 90 numbers have been called!');
       };
 
       gameEngine.setAutoCall(mapping.roomId, data.enabled, interval, onCall, onComplete);
@@ -601,7 +625,7 @@ io.on('connection', (socket) => {
 
     const onComplete = () => {
       broadcastGameState(mapping.roomId);
-      broadcastEvent(mapping.roomId, 'all_called', 'All 100 numbers have been called!');
+      broadcastEvent(mapping.roomId, 'all_called', 'All 90 numbers have been called!');
     };
 
     const success = gameEngine.resumeRound(mapping.roomId, onCall, onComplete);
@@ -869,9 +893,17 @@ io.on('connection', (socket) => {
   });
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`🎮 Housie Socket.IO server running on port ${PORT}`);
-});
+async function startServer() {
+  if (nextApp) {
+    console.log('⏳ Preparing Next.js application...');
+    await nextApp.prepare();
+  }
+  httpServer.listen(PORT, () => {
+    console.log(`🎮 Housie Night server running on port ${PORT}${shouldServeNext ? ' (Fullstack Next.js + Socket.IO)' : ' (Socket.IO standalone)'}`);
+  });
+}
+
+startServer();
 
 process.on('SIGINT', async () => {
   io.close();

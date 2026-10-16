@@ -113,17 +113,38 @@ export function generateTicket(): number[][] {
 }
 
 function generateSimpleTicket(): number[][] {
-  const ticket = [Array(9).fill(0), Array(9).fill(0), Array(9).fill(0)];
-  for (let r = 0; r < 3; r++) {
-    const cols = Array.from({ length: 9 }, (_, i) => i);
-    shuffle(cols);
-    const chosen = cols.slice(0, 5).sort((a, b) => a - b);
-    for (const c of chosen) {
-      const [min, max] = getColumnRange(c);
-      ticket[r][c] = Math.floor(Math.random() * (max - min + 1)) + min;
+  while (true) {
+    const layout = [Array(9).fill(false), Array(9).fill(false), Array(9).fill(false)];
+    for (let r = 0; r < 3; r++) {
+      const cols = Array.from({ length: 9 }, (_, i) => i);
+      shuffle(cols);
+      for (let i = 0; i < 5; i++) {
+        layout[r][cols[i]] = true;
+      }
     }
+    // Check every column has at least 1 number (standard Tambola rule)
+    const colCounts = Array(9).fill(0);
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (layout[r][c]) colCounts[c]++;
+      }
+    }
+    if (colCounts.some((cnt) => cnt === 0)) continue;
+
+    const ticket = [Array(9).fill(0), Array(9).fill(0), Array(9).fill(0)];
+    for (let c = 0; c < 9; c++) {
+      const [min, max] = getColumnRange(c);
+      const rowsWithNum = [0, 1, 2].filter((r) => layout[r][c]);
+      const pool: number[] = [];
+      for (let n = min; n <= max; n++) pool.push(n);
+      shuffle(pool);
+      const picked = pool.slice(0, rowsWithNum.length).sort((a, b) => a - b);
+      for (let i = 0; i < rowsWithNum.length; i++) {
+        ticket[rowsWithNum[i]][c] = picked[i];
+      }
+    }
+    return ticket;
   }
-  return ticket;
 }
 
 function shuffle<T>(arr: T[]): void {
