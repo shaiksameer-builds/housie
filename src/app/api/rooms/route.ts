@@ -50,10 +50,11 @@ export async function POST(request: NextRequest) {
       name: room.name,
       shareLink: `/room/${room.roomCode}`,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating room:', error);
+    const detail = error?.message ? `: ${error.message}` : '';
     return NextResponse.json(
-      { error: 'Failed to create room' },
+      { error: `Failed to create room${detail}` },
       { status: 500 }
     );
   }
