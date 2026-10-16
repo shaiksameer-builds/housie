@@ -106,7 +106,7 @@ export default function HomePage() {
         {/* Hero Section */}
         <div className="text-center max-w-3xl mx-auto mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-emerald-400 text-xs font-semibold mb-4">
-            <Sparkles className="w-3.5 h-3.5" /> Synchronized 1–100 Number Calling
+            <Sparkles className="w-3.5 h-3.5" /> Synchronized 1–90 Number Calling
           </div>
           <h2 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-4">
             Play Housie Together,{' '}
@@ -115,8 +115,8 @@ export default function HomePage() {
             </span>
           </h2>
           <p className="text-slate-400 text-base md:text-lg">
-            Create a private room in seconds. Invite friends with a link. Everyone gets a unique{' '}
-            <span className="text-emerald-300 font-medium">6 × 5 custom ticket</span> with automatic
+            Create a private room in seconds. Invite friends with a link. Everyone gets an authentic{' '}
+            <span className="text-emerald-300 font-medium">3 × 9 Housie ticket</span> with automatic
             server-side verification.
           </p>
         </div>
@@ -234,19 +234,19 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-6 text-sm">
             <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/60">
               <h4 className="font-bold text-emerald-400 mb-2 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> 6 × 5 Custom Ticket
+                <CheckCircle2 className="w-4 h-4" /> 3 × 9 Housie Ticket
               </h4>
               <p className="text-slate-400">
-                Unlike traditional 3×9 Tambola, every ticket has exactly 6 rows and 5 columns (30 unique numbers from 1–100) randomly distributed.
+                Standard 3 rows × 9 columns ticket with 15 numbers (5 numbers per row) ranging from 1 to 90.
               </p>
             </div>
 
             <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/60">
               <h4 className="font-bold text-emerald-400 mb-2 flex items-center gap-2">
-                <Trophy className="w-4 h-4" /> 8 Winning Categories
+                <Trophy className="w-4 h-4" /> Winning Categories
               </h4>
               <p className="text-slate-400">
-                Early Five (first 5 numbers called on ticket), 6 individual rows (Row 1 to Row 6), and the grand Full House (all 30 numbers).
+                Early Five (first 5 numbers called on ticket), Top Line, Middle Line, Bottom Line, and Full House (all 15 numbers).
               </p>
             </div>
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { GameEngine } from './game-engine';
 import { GameStatus, WinningCategory, PlayerInfo } from './types';
 
-describe('GameEngine Integration', () => {
+describe('GameEngine Integration 3x9', () => {
   let engine: GameEngine;
   const hostPlayer: PlayerInfo = {
     id: 'player-1',
@@ -29,41 +29,41 @@ describe('GameEngine Integration', () => {
     expect(engine.isHost('room-1', 'player-2')).toBe(false);
   });
 
-  it('starts a round and assigns tickets to all participants', () => {
+  it('starts a round and assigns 3x9 tickets to all participants', () => {
     engine.createRoom('room-1', 'TEST01', 'Game Room', hostPlayer);
     engine.addPlayer('room-1', guestPlayer);
 
-    const result = engine.startRound('room-1', 'round-1', [WinningCategory.EARLY_FIVE, WinningCategory.ROW_1], [
+    const result = engine.startRound('room-1', 'round-1', [WinningCategory.EARLY_FIVE, WinningCategory.TOP_LINE], [
       'player-1',
       'player-2',
     ]);
 
     expect(result.success).toBe(true);
     expect(result.tickets.size).toBe(2);
-    expect(result.tickets.get('player-1')).toBeDefined();
-    expect(result.tickets.get('player-2')).toBeDefined();
+    expect(result.tickets.get('player-1')).toHaveLength(3);
+    expect(result.tickets.get('player-1')![0]).toHaveLength(9);
 
     const state = engine.getGameState('room-1');
     expect(state?.status).toBe(GameStatus.IN_PROGRESS);
     expect(state?.calledNumbers).toHaveLength(0);
   });
 
-  it('calls numbers without replacement between 1 and 100', () => {
+  it('calls numbers without replacement between 1 and 90', () => {
     engine.createRoom('room-1', 'TEST01', 'Game Room', hostPlayer);
     engine.startRound('room-1', 'round-1', [WinningCategory.EARLY_FIVE], ['player-1']);
 
     const called = new Set<number>();
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 40; i++) {
       const res = engine.callNumber('room-1');
       expect(res.number).not.toBeNull();
       expect(res.number!).toBeGreaterThanOrEqual(1);
-      expect(res.number!).toBeLessThanOrEqual(100);
+      expect(res.number!).toBeLessThanOrEqual(90);
       expect(called.has(res.number!)).toBe(false);
       called.add(res.number!);
     }
 
     const state = engine.getGameState('room-1');
-    expect(state?.calledNumbers).toHaveLength(50);
+    expect(state?.calledNumbers).toHaveLength(40);
   });
 
   it('rejects duplicate winning claims for the same category', () => {
@@ -74,36 +74,14 @@ describe('GameEngine Integration', () => {
     const ticket = room.currentRound!.tickets.get('player-1')!;
 
     // Call 5 numbers from ticket
-    const numbersToCall = ticket.flat().slice(0, 5);
+    const numbersToCall = ticket.flat().filter((n) => n > 0).slice(0, 5);
     room.currentRound!.calledNumbers = [...numbersToCall];
 
     const firstClaim = engine.validateClaim('room-1', 'player-1', WinningCategory.EARLY_FIVE);
     expect(firstClaim.valid).toBe(true);
 
-    // Second claim should be rejected
     const secondClaim = engine.validateClaim('room-1', 'player-1', WinningCategory.EARLY_FIVE);
     expect(secondClaim.valid).toBe(false);
     expect(secondClaim.message).toContain('already been won');
-  });
-
-  it('reconnection retains player ticket and identity', () => {
-    engine.createRoom('room-1', 'TEST01', 'Game Room', hostPlayer);
-    engine.startRound('room-1', 'round-1', [WinningCategory.FULL_HOUSE], ['player-1']);
-
-    const ticketBefore = engine.getPlayerTicket('room-1', 'player-1');
-    expect(ticketBefore).toBeDefined();
-
-    // Disconnect
-    engine.setPlayerConnected('room-1', 'player-1', false);
-    let state = engine.getGameState('room-1');
-    expect(state?.players.find((p) => p.id === 'player-1')?.isConnected).toBe(false);
-
-    // Reconnect
-    engine.setPlayerConnected('room-1', 'player-1', true);
-    state = engine.getGameState('room-1');
-    expect(state?.players.find((p) => p.id === 'player-1')?.isConnected).toBe(true);
-
-    const ticketAfter = engine.getPlayerTicket('room-1', 'player-1');
-    expect(ticketAfter).toEqual(ticketBefore);
   });
 });

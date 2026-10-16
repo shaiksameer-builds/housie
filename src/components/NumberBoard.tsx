@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { MAX_NUMBER } from '@/lib/game/types';
 
 interface NumberBoardProps {
   calledNumbers: number[];
@@ -12,8 +13,9 @@ export function NumberBoard({ calledNumbers, lastCalledNumber }: NumberBoardProp
   const [isCollapsed, setIsCollapsed] = useState(false);
   const calledSet = new Set(calledNumbers);
 
-  // 1 to 100 array
-  const allNumbers = Array.from({ length: 100 }, (_, i) => i + 1);
+  // 1 to 90 array for standard Housie
+  const total = MAX_NUMBER || 90;
+  const allNumbers = Array.from({ length: total }, (_, i) => i + 1);
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-xl">
@@ -21,7 +23,7 @@ export function NumberBoard({ calledNumbers, lastCalledNumber }: NumberBoardProp
         <div className="flex items-center gap-3">
           <h3 className="font-bold text-white text-base md:text-lg">Number Board</h3>
           <span className="text-xs font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700">
-            {calledNumbers.length} / 100 Called
+            {calledNumbers.length} / {total} Called
           </span>
         </div>
         <button

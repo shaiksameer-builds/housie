@@ -44,7 +44,7 @@ export function ResultsModal({
             <span className="text-xs text-slate-400 block mb-1 flex items-center justify-center gap-1">
               <Hash className="w-3.5 h-3.5" /> Numbers Called
             </span>
-            <span className="text-xl font-bold text-white">{totalCalled} / 100</span>
+            <span className="text-xl font-bold text-white">{totalCalled} / 90</span>
           </div>
           <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-center">
             <span className="text-xs text-slate-400 block mb-1 flex items-center justify-center gap-1">

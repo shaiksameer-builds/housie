@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Sparkles, Hash } from 'lucide-react';
+import { MAX_NUMBER } from '@/lib/game/types';
 
 interface LatestCallProps {
   lastCalledNumber: number | null;
@@ -9,7 +10,8 @@ interface LatestCallProps {
 }
 
 export function LatestCall({ lastCalledNumber, totalCalled }: LatestCallProps) {
-  const remaining = 100 - totalCalled;
+  const max = MAX_NUMBER || 90;
+  const remaining = Math.max(0, max - totalCalled);
 
   return (
     <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center justify-center text-center relative overflow-hidden">

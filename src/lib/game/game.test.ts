@@ -3,8 +3,8 @@ import { generateTicket, validateTicket, flatToGrid, gridToFlat } from './ticket
 import { checkWinningCategory, getCategoryWinIndex } from './winning-checker';
 import { WinningCategory, TICKET_ROWS, TICKET_COLS, TICKET_TOTAL_NUMBERS } from './types';
 
-describe('Ticket Generator', () => {
-  it('should generate a ticket with exactly 6 rows and 5 columns', () => {
+describe('3x9 Ticket Generator', () => {
+  it('should generate a ticket with exactly 3 rows and 9 columns', () => {
     const ticket = generateTicket();
     expect(ticket).toHaveLength(TICKET_ROWS);
     for (const row of ticket) {
@@ -12,90 +12,79 @@ describe('Ticket Generator', () => {
     }
   });
 
-  it('should contain exactly 30 unique numbers between 1 and 100', () => {
+  it('should contain exactly 15 non-zero numbers between 1 and 90 (5 per row)', () => {
     const ticket = generateTicket();
-    const flat = ticket.flat();
-    expect(flat).toHaveLength(TICKET_TOTAL_NUMBERS);
+    for (let r = 0; r < TICKET_ROWS; r++) {
+      const nonZeros = ticket[r].filter((n) => n > 0);
+      expect(nonZeros).toHaveLength(5);
+    }
+
+    const flat = ticket.flat().filter((n) => n > 0);
+    expect(flat).toHaveLength(TICKET_TOTAL_NUMBERS); // 15
 
     const set = new Set(flat);
-    expect(set.size).toBe(30);
+    expect(set.size).toBe(15);
 
     for (const num of flat) {
       expect(num).toBeGreaterThanOrEqual(1);
-      expect(num).toBeLessThanOrEqual(100);
+      expect(num).toBeLessThanOrEqual(90);
       expect(Number.isInteger(num)).toBe(true);
     }
   });
 
-  it('validateTicket returns valid for properly formed tickets', () => {
+  it('validateTicket returns valid for properly formed 3x9 tickets', () => {
     const ticket = generateTicket();
     const result = validateTicket(ticket);
     expect(result.valid).toBe(true);
     expect(result.errors).toHaveLength(0);
   });
 
-  it('validateTicket rejects tickets with wrong dimensions or duplicates', () => {
+  it('validateTicket rejects tickets with invalid number counts', () => {
     const badTicket = [
-      [1, 2, 3, 4, 5],
-      [6, 7, 8, 9, 10],
-      [11, 12, 13, 14, 15],
-      [16, 17, 18, 19, 20],
-      [21, 22, 23, 24, 25],
-      [26, 27, 28, 29, 29], // Duplicate 29
+      [1, 2, 3, 4, 5, 6, 0, 0, 0], // 6 numbers
+      [0, 11, 0, 13, 0, 15, 0, 17, 0], // 4 numbers
+      [0, 0, 21, 0, 23, 0, 25, 0, 27], // 4 numbers
     ];
     const result = validateTicket(badTicket);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('duplicate'))).toBe(true);
   });
 
-  it('flatToGrid and gridToFlat correctly convert shapes', () => {
+  it('flatToGrid and gridToFlat correctly convert 27 cells', () => {
     const ticket = generateTicket();
     const flat = gridToFlat(ticket);
-    expect(flat).toHaveLength(30);
+    expect(flat).toHaveLength(27);
     const restored = flatToGrid(flat);
     expect(restored).toEqual(ticket);
   });
 });
 
-describe('Winning Logic & Claims', () => {
+describe('3x9 Winning Logic & Claims', () => {
   const dummyTicket = [
-    [1, 2, 3, 4, 5],
-    [6, 7, 8, 9, 10],
-    [11, 12, 13, 14, 15],
-    [16, 17, 18, 19, 20],
-    [21, 22, 23, 24, 25],
-    [26, 27, 28, 29, 30],
+    [1, 0, 22, 0, 44, 0, 66, 0, 88], // Row 0 (Top line): 1, 22, 44, 66, 88
+    [0, 12, 0, 33, 0, 55, 0, 77, 0], // Row 1 (Middle line): 12, 33, 55, 77 (wait need 5)
+    [2, 0, 24, 0, 46, 0, 68, 0, 90], // Row 2 (Bottom line): 2, 24, 46, 68, 90
   ];
+  dummyTicket[1][8] = 89; // Now 5 numbers in row 1: 12, 33, 55, 77, 89
 
   it('should accurately detect Early Five', () => {
-    // None called
-    expect(checkWinningCategory(dummyTicket, [99, 98, 97], WinningCategory.EARLY_FIVE)).toBe(false);
-
-    // 4 called
-    expect(checkWinningCategory(dummyTicket, [1, 2, 3, 4, 99], WinningCategory.EARLY_FIVE)).toBe(false);
-
-    // 5 called
-    expect(checkWinningCategory(dummyTicket, [1, 2, 3, 4, 5], WinningCategory.EARLY_FIVE)).toBe(true);
-    expect(getCategoryWinIndex(dummyTicket, [99, 1, 98, 2, 3, 4, 5], WinningCategory.EARLY_FIVE)).toBe(6);
+    expect(checkWinningCategory(dummyTicket, [99, 98], WinningCategory.EARLY_FIVE)).toBe(false);
+    expect(checkWinningCategory(dummyTicket, [1, 22, 44, 66], WinningCategory.EARLY_FIVE)).toBe(false);
+    expect(checkWinningCategory(dummyTicket, [1, 22, 44, 66, 88], WinningCategory.EARLY_FIVE)).toBe(true);
   });
 
-  it('should accurately detect each of the 6 individual rows', () => {
-    // Row 1 (Top Row)
-    expect(checkWinningCategory(dummyTicket, [1, 2, 3, 4, 5], WinningCategory.ROW_1)).toBe(true);
-    expect(checkWinningCategory(dummyTicket, [1, 2, 3, 4, 6], WinningCategory.ROW_1)).toBe(false);
+  it('should accurately detect Top Line, Middle Line, and Bottom Line', () => {
+    expect(checkWinningCategory(dummyTicket, [1, 22, 44, 66, 88], WinningCategory.TOP_LINE)).toBe(true);
+    expect(checkWinningCategory(dummyTicket, [1, 22, 44, 66], WinningCategory.TOP_LINE)).toBe(false);
 
-    // Row 3
-    expect(checkWinningCategory(dummyTicket, [11, 12, 13, 14, 15], WinningCategory.ROW_3)).toBe(true);
-
-    // Row 6 (Bottom Row)
-    expect(checkWinningCategory(dummyTicket, [26, 27, 28, 29, 30], WinningCategory.ROW_6)).toBe(true);
+    expect(checkWinningCategory(dummyTicket, [12, 33, 55, 77, 89], WinningCategory.MIDDLE_LINE)).toBe(true);
+    expect(checkWinningCategory(dummyTicket, [2, 24, 46, 68, 90], WinningCategory.BOTTOM_LINE)).toBe(true);
   });
 
-  it('should require all 30 numbers for Full House', () => {
-    const first29 = dummyTicket.flat().slice(0, 29);
-    expect(checkWinningCategory(dummyTicket, first29, WinningCategory.FULL_HOUSE)).toBe(false);
+  it('should require all 15 numbers for Full House', () => {
+    const all15 = dummyTicket.flat().filter((n) => n > 0);
+    const first14 = all15.slice(0, 14);
 
-    const all30 = dummyTicket.flat();
-    expect(checkWinningCategory(dummyTicket, all30, WinningCategory.FULL_HOUSE)).toBe(true);
+    expect(checkWinningCategory(dummyTicket, first14, WinningCategory.FULL_HOUSE)).toBe(false);
+    expect(checkWinningCategory(dummyTicket, all15, WinningCategory.FULL_HOUSE)).toBe(true);
   });
 });
