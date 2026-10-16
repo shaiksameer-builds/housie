@@ -77,57 +77,68 @@ Engineered with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, a
 │           ├── types.ts           # GameState, WinningCategory contracts
 │           ├── ticket-generator.ts# Indian Tambola 3x9 ticket generator & validator
 │           └── winning-checker.ts # Authoritative win validation
-├── supabase/
-│   ├── schema.sql                 # Complete SQL schema, RLS policies, and RPCs
+├── prisma/
+│   ├── schema.prisma              # PostgreSQL schema with directUrl for connection pooling
 │   └── migrations/
-│       └── 20261016_initial_housie_schema.sql # Version-controlled migration
+│       └── 20261017000000_init_postgresql/migration.sql # Initial PostgreSQL DDL
+├── supabase/
+│   ├── schema.sql                 # Supabase SQL schema, RLS policies, RPCs, and Realtime publication
+│   └── migrations/
+│       └── 20261016_initial_housie_schema.sql # Version-controlled Supabase migration
 ```
 
 ---
 
 ## 🚀 Setup & Deployment Guide
 
-Follow these 8 steps to run locally and deploy to Vercel with your Supabase project:
+Follow these steps to run locally and deploy to Vercel with your Supabase PostgreSQL database:
 
 ### Step 1: Install Dependencies
 ```bash
 npm install
 ```
 
-### Step 2: Configure the Supabase Project
-You have an existing Supabase project:
+### Step 2: Configure Environment Variables
+Obtain your Supabase credentials:
+- **Project Reference**: `zqnzakkmnwcygmeuwkgs`
 - **Project URL**: `https://zqnzakkmnwcygmeuwkgs.supabase.co`
 - **Publishable Key**: `sb_publishable_NLSuRmc53NSj8i0byzBL2w_KuYQvfQO`
 
-### Step 3: Apply Database Migrations in Supabase
-1. Open the [Supabase Dashboard](https://supabase.com/dashboard) and select your project (`zqnzakkmnwcygmeuwkgs`).
-2. Navigate to the **SQL Editor** on the left navigation bar.
-3. Open [`supabase/schema.sql`](file:///c:/Users/samee/OneDrive/Desktop/New%20folder/supabase/schema.sql) in this repository and copy its entire contents.
-4. Paste into the SQL Editor and click **Run**.
-5. This automatically creates:
-   - Tables: `rooms`, `players`, `game_rounds`, `tickets`, `winning_claims`.
-   - Indexes and constraints (preventing race conditions and duplicate claims).
-   - Row Level Security (RLS) policies protecting tickets and rooms.
-   - Atomic RPC functions: `rpc_call_next_number` and `rpc_record_winning_claim`.
-   - Realtime publication: adds tables to `supabase_realtime`.
+To connect Prisma to Supabase PostgreSQL, open your Supabase Dashboard:
+1. Go to **Project Settings** -> **Database** -> **Connection string**
+2. **Transaction Pooler (Port 6543)** (for `DATABASE_URL`):
+   Select **Transaction** mode. Copy the URI and add `?pgbouncer=true`.
+   ```env
+   DATABASE_URL="postgresql://postgres.zqnzakkmnwcygmeuwkgs:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true"
+   ```
+3. **Direct Connection / Session Mode (Port 5432)** (for `DIRECT_URL`):
+   Select **Session** mode (or direct connection).
+   ```env
+   DIRECT_URL="postgresql://postgres.zqnzakkmnwcygmeuwkgs:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres"
+   ```
 
-### Step 4: Configure Local Environment Variables
-Create or verify `.env.local` in the project root:
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://zqnzakkmnwcygmeuwkgs.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_NLSuRmc53NSj8i0byzBL2w_KuYQvfQO
-PORT=3000
-NODE_ENV=development
+### Step 3: Apply Database Migrations in Supabase
+You can apply the database schema safely using either of two methods:
+
+#### Method A: Via Supabase SQL Editor (Recommended)
+1. Open the [Supabase Dashboard](https://supabase.com/dashboard/project/zqnzakkmnwcygmeuwkgs).
+2. Go to the **SQL Editor** (`>_`) and click **New Query**.
+3. Copy the contents of [`prisma/migrations/20261017000000_init_postgresql/migration.sql`](file:///c:/Users/samee/OneDrive/Desktop/New%20folder/prisma/migrations/20261017000000_init_postgresql/migration.sql) (or [`supabase/schema.sql`](file:///c:/Users/samee/OneDrive/Desktop/New%20folder/supabase/schema.sql)).
+4. Paste and click **Run**.
+
+#### Method B: Via Prisma CLI
+With `DIRECT_URL` configured in your environment:
+```bash
+npm run db:migrate
 ```
 
-### Step 5: Run the Website Locally
-Start the Next.js development server:
+### Step 4: Run the Website Locally
 ```bash
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Step 6: Connect the GitHub Repository to Vercel
+### Step 5: Connect GitHub to Vercel
 1. Push your changes to your GitHub repository:
    ```bash
    git push origin main
@@ -136,24 +147,21 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 3. Import your repository: `shaiksameer-builds/housie`.
 4. Framework Preset: **Next.js** (detected automatically).
 
-### Step 7: Configure Production Environment Variables on Vercel
-In the Vercel project deployment settings, add the following Environment Variables:
+### Step 6: Configure Production Environment Variables on Vercel
+In the Vercel project deployment settings (**Settings** -> **Environment Variables**), add:
 
 | Variable Name | Value | Purpose |
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://zqnzakkmnwcygmeuwkgs.supabase.co` | Supabase API URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_NLSuRmc53NSj8i0byzBL2w_KuYQvfQO` | Client-safe publishable key |
+| `DATABASE_URL` | `postgresql://postgres.zqnzakkmnwcygmeuwkgs:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true` | Supabase Transaction Pooler connection |
+| `DIRECT_URL` | `postgresql://postgres.zqnzakkmnwcygmeuwkgs:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres` | Supabase direct connection for migrations |
 | `SUPABASE_SERVICE_ROLE_KEY` | *(Optional, from Supabase Dashboard > Settings > API)* | Privileged server RPCs |
 
-### Step 8: Deploy and Test the Live Website
+### Step 7: Deploy and Play!
 1. Click **Deploy** in Vercel.
-2. Once deployed, open your live URL (e.g. `https://housie.vercel.app`).
-3. **Multi-device Testing**:
-   - Create a room on your desktop/laptop as Host.
-   - Copy the invitation link or 6-letter room code.
-   - Open the link on an iPhone or Android phone.
-   - Enter player names (e.g. *"Pooja 🌟"* and *"Vicky"*).
-   - Start the round, call numbers, dab your 3×9 tickets, and claim prizes in real time!
+2. Vercel automatically runs `prisma generate && next build`.
+3. Open your live URL on desktop and mobile browsers, create a room, share the invitation link, and play Housie with friends and family in real time!
 
 ---
 

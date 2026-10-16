@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Room {
@@ -48,7 +49,7 @@ model GameRound {
   room              Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
   roundNumber       Int
   status            String         @default("waiting") // waiting, ready, in_progress, paused, completed
-  calledNumbers     String         @default("[]")      // Stored as JSON string for sqlite compatibility
+  calledNumbers     String         @default("[]")      // Stored as JSON array string: "[...]"
   autoCall          Boolean        @default(false)
   autoCallInterval  Int            @default(5)         // seconds
   enabledCategories String         @default("[]")      // Stored as JSON string
