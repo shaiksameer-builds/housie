@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Room {
+  id           String      @id @default(cuid())
+  roomCode     String      @unique
+  name         String
+  hostPlayerId String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  expiresAt    DateTime?
+  isActive     Boolean     @default(true)
+  maxPlayers   Int         @default(20)
+  players      Player[]
+  rounds       GameRound[]
+
+  @@index([roomCode])
+  @@index([isActive])
+}
+
+model Player {
+  id           String         @id @default(cuid())
+  displayName  String
+  sessionToken String         @unique
+  roomId       String
+  room         Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  isHost       Boolean        @default(false)
+  isConnected  Boolean        @default(true)
+  joinedAt     DateTime       @default(now())
+  lastSeenAt   DateTime       @default(now())
+  tickets      Ticket[]
+  claims       WinningClaim[]
+
+  @@unique([roomId, displayName])
+  @@index([sessionToken])
+  @@index([roomId])
+}
+
+model GameRound {
+  id                String         @id @default(cuid())
+  roomId            String
+  room              Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roundNumber       Int
+  status            String         @default("waiting") // waiting, ready, in_progress, paused, completed
+  calledNumbers     String         @default("[]")      // Stored as JSON string for sqlite compatibility
+  autoCall          Boolean        @default(false)
+  autoCallInterval  Int            @default(5)         // seconds
+  enabledCategories String         @default("[]")      // Stored as JSON string
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  tickets           Ticket[]
+  claims            WinningClaim[]
+
+  @@unique([roomId, roundNumber])
+  @@index([roomId])
+  @@index([status])
+}
+
+model Ticket {
+  id        String    @id @default(cuid())
+  playerId  String
+  player    Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  roundId   String
+  round     GameRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  numbers   String    // 30 numbers stored as JSON array string: "[...]"
+  createdAt DateTime  @default(now())
+
+  @@unique([playerId, roundId])
+  @@index([roundId])
+}
+
+model WinningClaim {
+  id                String    @id @default(cuid())
+  playerId          String
+  player            Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  roundId           String
+  round             GameRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  category          String
+  calledNumberIndex Int
+  isValid           Boolean   @default(true)
+  claimedAt         DateTime  @default(now())
+
+  @@unique([roundId, category, playerId])
+  @@index([roundId])
+  @@index([playerId])
+}
