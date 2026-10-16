@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.118.0",
     "autoprefixer": "^10.6.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.58.0",

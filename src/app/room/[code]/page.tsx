@@ -1,14 +1,12 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { io, Socket } from 'socket.io-client';
+import { supabase } from '@/lib/supabase/client';
 import {
   GameStatus,
   WinningCategory,
   type GameState,
-  type ServerToClientEvents,
-  type ClientToServerEvents,
   type CategoryClaim,
   type RoundResult,
 } from '@/lib/game/types';
@@ -40,8 +38,6 @@ export default function RoomPage() {
   const router = useRouter();
   const roomCode = (params.code as string)?.toUpperCase();
 
-  const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
-
   const [playerId, setPlayerId] = useState<string>('');
   const [sessionToken, setSessionToken] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
@@ -63,7 +59,10 @@ export default function RoomPage() {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
 
-  // Initialize display name from storage
+  // Auto-call timer ref
+  const autoCallTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load saved name and session token from storage on mount
   useEffect(() => {
     if (!roomCode) return;
     const sessionName = sessionStorage.getItem(`housie_name_${roomCode}`) || '';
@@ -84,82 +83,159 @@ export default function RoomPage() {
     setVoiceEnabled(soundManager.isVoiceEnabled());
   }, [roomCode]);
 
-  // Connect socket once name or token is available
-  useEffect(() => {
-    if (!roomCode || (!displayName && !sessionToken)) return;
+  // Authoritative State Fetcher
+  const fetchAuthoritativeState = useCallback(async (token?: string) => {
+    if (!roomCode) return;
+    const currentToken = token || sessionToken || localStorage.getItem(`housie_session_${roomCode}`) || '';
 
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
-    const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(socketUrl, {
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 15,
-      reconnectionDelay: 1000,
-    });
+    try {
+      const res = await fetch(`/api/rooms/${roomCode}/state`, {
+        headers: currentToken ? { 'x-session-token': currentToken } : {},
+      });
 
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      setIsConnected(true);
-      socket.emit(
-        'room:join',
-        {
-          roomCode,
-          displayName,
-          sessionToken: sessionToken || undefined,
-        },
-        (response) => {
-          setIsJoining(false);
-          if (response.success && response.playerId) {
-            setPlayerId(response.playerId);
-            if (response.sessionToken) {
-              setSessionToken(response.sessionToken);
-              localStorage.setItem(`housie_session_${roomCode}`, response.sessionToken);
-            }
-          } else {
-            setJoinError(response.message || 'Failed to join room');
-          }
+      if (!res.ok) {
+        if (res.status === 404) {
+          setJoinError('Room not found or no longer active.');
         }
-      );
-    });
+        return;
+      }
 
-    socket.on('disconnect', () => {
-      setIsConnected(false);
-    });
+      const data = await res.json();
+      if (data.success && data.state) {
+        setGameState(data.state);
+        if (data.ticket) {
+          setTicket(data.ticket);
+        }
+        if (data.playerId) {
+          setPlayerId(data.playerId);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch authoritative state:', err);
+    }
+  }, [roomCode, sessionToken]);
 
-    socket.on('game:state', (state) => {
-      setGameState(state);
-    });
+  // Join Room once name is available
+  useEffect(() => {
+    if (!roomCode || !displayName) return;
 
-    socket.on('game:ticket', (ticketData) => {
-      setTicket(ticketData.numbers);
-    });
+    let isSubscribed = true;
 
-    socket.on('game:number-called', (data) => {
-      soundManager.playCallChime();
-      soundManager.speakNumber(data.number);
-    });
+    async function initRoom() {
+      setIsJoining(true);
+      setJoinError('');
 
-    socket.on('game:event', (event) => {
-      setNotification(event.message);
-      setTimeout(() => setNotification(''), 4000);
-    });
+      try {
+        const savedToken = localStorage.getItem(`housie_session_${roomCode}`) || undefined;
 
-    socket.on('game:category-won', (claim) => {
-      soundManager.playWinFanfare();
-      triggerConfetti();
-      setNotification(`🏆 ${claim.playerName} won ${claim.category}! 🎉`);
-      setTimeout(() => setNotification(''), 5000);
-    });
+        const res = await fetch(`/api/rooms/${roomCode}/join`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            displayName,
+            sessionToken: savedToken,
+          }),
+        });
 
-    socket.on('game:round-completed', (result) => {
-      setCompletedRoundResult(result);
-      triggerConfetti();
-    });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          if (isSubscribed) {
+            setJoinError(data.error || 'Failed to join room.');
+            setIsJoining(false);
+          }
+          return;
+        }
+
+        if (isSubscribed) {
+          setPlayerId(data.playerId);
+          if (data.sessionToken) {
+            setSessionToken(data.sessionToken);
+            localStorage.setItem(`housie_session_${roomCode}`, data.sessionToken);
+          }
+          setIsJoining(false);
+        }
+
+        // Fetch complete state with session token
+        await fetchAuthoritativeState(data.sessionToken);
+      } catch (err: any) {
+        if (isSubscribed) {
+          setJoinError(err.message || 'Network error connecting to room.');
+          setIsJoining(false);
+        }
+      }
+    }
+
+    initRoom();
 
     return () => {
-      socket.disconnect();
+      isSubscribed = false;
     };
-  }, [roomCode, displayName]);
+  }, [roomCode, displayName, fetchAuthoritativeState]);
 
+  // Setup Supabase Realtime Channel
+  useEffect(() => {
+    if (!roomCode || !displayName) return;
+
+    const channelName = `room:${roomCode}`;
+    const channel = supabase.channel(channelName, {
+      config: {
+        broadcast: { ack: false, self: false },
+        presence: { key: playerId || displayName },
+      },
+    });
+
+    channel
+      .on('broadcast', { event: 'game:number-called' }, ({ payload }) => {
+        if (payload?.number) {
+          soundManager.playCallChime();
+          soundManager.speakNumber(payload.number);
+        }
+        fetchAuthoritativeState();
+      })
+      .on('broadcast', { event: 'game:category-won' }, ({ payload }) => {
+        soundManager.playWinFanfare();
+        triggerConfetti();
+        if (payload) {
+          setNotification(`🏆 ${payload.playerName} won ${payload.category}! 🎉`);
+          setTimeout(() => setNotification(''), 5000);
+        }
+        fetchAuthoritativeState();
+      })
+      .on('broadcast', { event: 'game:state-update' }, () => {
+        fetchAuthoritativeState();
+      })
+      .on('broadcast', { event: 'game:player-joined' }, ({ payload }) => {
+        if (payload?.displayName && payload.displayName !== displayName) {
+          setNotification(`${payload.displayName} joined the room`);
+          setTimeout(() => setNotification(''), 3000);
+        }
+        fetchAuthoritativeState();
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setIsConnected(true);
+          channel.track({
+            playerId,
+            displayName,
+            online_at: new Date().toISOString(),
+          });
+        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          setIsConnected(false);
+        }
+      });
+
+    // Periodic state refresh fallback (heartbeat)
+    const interval = setInterval(() => {
+      fetchAuthoritativeState();
+    }, 4000);
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [roomCode, displayName, playerId, fetchAuthoritativeState]);
+
+  // Handle Name Submit if user came via link without saved name
   const handleNameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = nameInput.trim();
@@ -197,62 +273,139 @@ export default function RoomPage() {
     });
   };
 
-  const handleStartGame = (enabledCategories: WinningCategory[]) => {
-    socketRef.current?.emit('game:start', { enabledCategories }, (res) => {
-      if (!res.success) alert(res.message || 'Failed to start round');
-    });
-  };
+  // Host Actions
+  const handleStartGame = async (enabledCategories: WinningCategory[]) => {
+    try {
+      const res = await fetch(`/api/rooms/${roomCode}/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-session-token': sessionToken,
+        },
+        body: JSON.stringify({ enabledCategories }),
+      });
 
-  const handleCallNumber = () => {
-    socketRef.current?.emit('game:call-number', (res) => {
-      if (!res.success && res.message) alert(res.message);
-    });
-  };
-
-  const handleToggleAutoCall = (enabled: boolean, interval = 5) => {
-    socketRef.current?.emit('game:toggle-auto-call', { enabled, interval }, (res) => {
-      if (!res.success && res.message) alert(res.message);
-    });
-  };
-
-  const handlePause = () => {
-    socketRef.current?.emit('game:pause', (res) => {
-      if (!res.success && res.message) alert(res.message);
-    });
-  };
-
-  const handleResume = () => {
-    socketRef.current?.emit('game:resume', (res) => {
-      if (!res.success && res.message) alert(res.message);
-    });
-  };
-
-  const handleClaim = (category: WinningCategory) => {
-    setIsClaiming(true);
-    socketRef.current?.emit('game:claim', { category }, (res) => {
-      setIsClaiming(false);
-      if (!res.success) {
-        alert(res.message || 'Claim rejected');
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to start game');
+        return;
       }
-    });
+      await fetchAuthoritativeState();
+    } catch (err: any) {
+      alert(err.message || 'Error starting game');
+    }
   };
 
-  const handleEndRound = () => {
-    socketRef.current?.emit('game:end-round', (res) => {
-      if (!res.success && res.message) alert(res.message);
-    });
+  const handleCallNumber = async () => {
+    try {
+      const res = await fetch(`/api/rooms/${roomCode}/call`, {
+        method: 'POST',
+        headers: {
+          'x-session-token': sessionToken,
+        },
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error) alert(data.error);
+        return;
+      }
+      if (data.number) {
+        soundManager.playCallChime();
+        soundManager.speakNumber(data.number);
+      }
+      await fetchAuthoritativeState();
+    } catch (err: any) {
+      alert(err.message || 'Error calling number');
+    }
   };
 
-  const handleStartNextRound = () => {
+  // Host Auto-Call Toggle
+  const handleToggleAutoCall = (enabled: boolean, interval = 5) => {
+    if (autoCallTimerRef.current) {
+      clearInterval(autoCallTimerRef.current);
+      autoCallTimerRef.current = null;
+    }
+
+    if (enabled) {
+      handleCallNumber(); // call first immediately
+      autoCallTimerRef.current = setInterval(() => {
+        handleCallNumber();
+      }, interval * 1000);
+    }
+
+    setGameState((prev) => (prev ? { ...prev, autoCall: enabled, autoCallInterval: interval } : prev));
+  };
+
+  const handlePause = async () => {
+    if (autoCallTimerRef.current) {
+      clearInterval(autoCallTimerRef.current);
+      autoCallTimerRef.current = null;
+    }
+
+    await fetch(`/api/rooms/${roomCode}/pause`, {
+      method: 'POST',
+      headers: { 'x-session-token': sessionToken },
+    });
+    await fetchAuthoritativeState();
+  };
+
+  const handleResume = async () => {
+    await fetch(`/api/rooms/${roomCode}/resume`, {
+      method: 'POST',
+      headers: { 'x-session-token': sessionToken },
+    });
+    await fetchAuthoritativeState();
+  };
+
+  const handleClaim = async (category: WinningCategory) => {
+    setIsClaiming(true);
+    try {
+      const res = await fetch(`/api/rooms/${roomCode}/claim`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-session-token': sessionToken,
+        },
+        body: JSON.stringify({ category }),
+      });
+
+      const data = await res.json();
+      setIsClaiming(false);
+
+      if (!res.ok || !data.success) {
+        alert(data.error || 'Claim rejected. Required numbers have not been called yet.');
+        return;
+      }
+
+      soundManager.playWinFanfare();
+      triggerConfetti();
+      setNotification(`🏆 You won ${category}! 🎉`);
+      setTimeout(() => setNotification(''), 5000);
+      await fetchAuthoritativeState();
+    } catch (err: any) {
+      setIsClaiming(false);
+      alert(err.message || 'Error submitting claim');
+    }
+  };
+
+  const handleEndRound = async () => {
+    if (autoCallTimerRef.current) {
+      clearInterval(autoCallTimerRef.current);
+      autoCallTimerRef.current = null;
+    }
+
+    await fetch(`/api/rooms/${roomCode}/end`, {
+      method: 'POST',
+      headers: { 'x-session-token': sessionToken },
+    });
+    await fetchAuthoritativeState();
+  };
+
+  const handleStartNextRound = async () => {
     setCompletedRoundResult(null);
     setMarkedNumbers(new Set());
-    socketRef.current?.emit(
-      'game:next-round',
-      { enabledCategories: gameState?.enabledCategories || [] },
-      (res) => {
-        if (!res.success && res.message) alert(res.message);
-      }
-    );
+    await handleStartGame(gameState?.enabledCategories || []);
   };
 
   // If user opened an invite link directly and hasn't chosen a name yet
@@ -383,12 +536,12 @@ export default function RoomPage() {
             {isConnected ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-emerald-400 text-[11px] hidden md:inline">Online</span>
+                <span className="text-emerald-400 text-[11px] hidden md:inline">Realtime</span>
               </>
             ) : (
               <>
-                <span className="w-2 h-2 rounded-full bg-rose-400" />
-                <span className="text-rose-400 text-[11px] hidden md:inline">Reconnecting</span>
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-amber-400 text-[11px] hidden md:inline">Syncing</span>
               </>
             )}
           </div>
@@ -412,7 +565,7 @@ export default function RoomPage() {
             players={gameState.players}
             isHost={isHost}
             onStartGame={handleStartGame}
-            disabled={!isConnected}
+            disabled={!isConnected && isJoining}
           />
         )}
 
@@ -431,7 +584,7 @@ export default function RoomPage() {
                 onResume={handleResume}
                 onEndRound={handleEndRound}
                 onStartNextRound={handleStartNextRound}
-                disabled={!isConnected}
+                disabled={!isConnected && isJoining}
               />
             )}
 
