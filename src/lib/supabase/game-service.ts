@@ -72,7 +72,9 @@ export async function createGameRoom(roomName: string, hostDisplayName?: string)
       .select()
       .single();
 
-    if (!error && newRoom) {
+    if (error) {
+      console.warn('Supabase rooms table insert error:', error.message, error.details, error.hint);
+    } else if (newRoom) {
       return {
         success: true,
         roomId: newRoom.id,
