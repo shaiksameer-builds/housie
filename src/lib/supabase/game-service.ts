@@ -615,11 +615,17 @@ export async function startNewRound(
 
 /**
  * Calls the next number in the sequence atomically.
+ *
+ * Layer 1 — Supabase RPC:  atomic, preferred. If it returns a business-logic
+ *            failure (success=false) we respect it immediately.
+ * Layer 2 — Direct Supabase tables: service-role key bypasses RLS.
+ *            Handles the common case where data was written by Supabase path.
+ * Layer 3 — Prisma: final fallback for rooms created via the Prisma code path.
  */
 export async function callNextNumber(roomCode: string, sessionToken: string) {
   const code = roomCode.toUpperCase().trim();
 
-  // Try Supabase RPC first
+  // ── Layer 1: Supabase RPC ─────────────────────────────────────────────────
   try {
     const { data: rpcRes, error: rpcErr } = await serverSupabase.rpc(
       'rpc_call_next_number',
@@ -637,11 +643,99 @@ export async function callNextNumber(roomCode: string, sessionToken: string) {
 
       return { success: true, number: rpcRes.number, totalCalled: rpcRes.totalCalled };
     }
+
+    // Business-logic failure from RPC — respect it, do not fall through
+    if (!rpcErr && rpcRes && rpcRes.success === false) {
+      return { success: false, message: rpcRes.message || 'Unable to call number.' };
+    }
+
+    if (rpcErr) {
+      console.warn('[callNextNumber] RPC transport error, trying direct Supabase:', rpcErr.message);
+    }
   } catch (err) {
-    console.warn('Supabase RPC call failed, trying direct logic:', err);
+    console.warn('[callNextNumber] RPC threw exception, trying direct Supabase:', err);
   }
 
-  // Fallback direct logic
+  // ── Layer 2: Direct Supabase table queries ────────────────────────────────
+  try {
+    const { data: room } = await serverSupabase
+      .from('rooms')
+      .select('id, host_player_id')
+      .eq('room_code', code)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!room) return { success: false, message: 'Room not found' };
+
+    // Verify the caller is the current host
+    const { data: callerPlayer } = await serverSupabase
+      .from('players')
+      .select('id')
+      .eq('session_token', sessionToken)
+      .eq('room_id', room.id)
+      .maybeSingle();
+
+    if (!callerPlayer || callerPlayer.id !== room.host_player_id) {
+      return { success: false, message: 'Only the host can call numbers.' };
+    }
+
+    // Get the active round (has a pre-shuffled remaining_numbers pool)
+    const { data: round } = await serverSupabase
+      .from('game_rounds')
+      .select('id, called_numbers, remaining_numbers')
+      .eq('room_id', room.id)
+      .eq('status', 'in_progress')
+      .order('round_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!round) return { success: false, message: 'No round in progress' };
+
+    const remaining: number[] = Array.isArray(round.remaining_numbers)
+      ? round.remaining_numbers
+      : [];
+    const called: number[] = Array.isArray(round.called_numbers) ? round.called_numbers : [];
+
+    if (remaining.length === 0) {
+      await serverSupabase
+        .from('game_rounds')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', round.id);
+      return { success: false, message: 'All 90 numbers have been called.' };
+    }
+
+    // Pop the last element — matches the RPC behaviour
+    const nextNum = remaining[remaining.length - 1];
+    const newRemaining = remaining.slice(0, remaining.length - 1);
+    const newCalled = [...called, nextNum];
+
+    const { error: updateErr } = await serverSupabase
+      .from('game_rounds')
+      .update({
+        called_numbers: newCalled,
+        remaining_numbers: newRemaining,
+        status: newRemaining.length === 0 ? 'completed' : 'in_progress',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', round.id);
+
+    if (updateErr) throw new Error(`game_rounds update failed: ${updateErr.message}`);
+
+    await broadcastToRoom(code, 'game:number-called', {
+      number: nextNum,
+      totalCalled: newCalled.length,
+    });
+
+    return { success: true, number: nextNum, totalCalled: newCalled.length };
+  } catch (supabaseErr) {
+    console.warn('[callNextNumber] Direct Supabase fallback failed, trying Prisma:', supabaseErr);
+  }
+
+  // ── Layer 3: Prisma (rooms created via Prisma code path) ─────────────────
   const room = await prisma.room.findUnique({
     where: { roomCode: code },
     include: {
@@ -666,7 +760,7 @@ export async function callNextNumber(roomCode: string, sessionToken: string) {
   } catch {}
 
   const calledSet = new Set(calledNumbers);
-  const remaining = [];
+  const remaining: number[] = [];
   for (let n = MIN_NUMBER; n <= 90; n++) {
     if (!calledSet.has(n)) remaining.push(n);
   }

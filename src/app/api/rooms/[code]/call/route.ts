@@ -26,6 +26,7 @@ export async function POST(
     });
   } catch (err: any) {
     console.error('Error in call number endpoint:', err);
-    return NextResponse.json({ error: 'Failed to call number.' }, { status: 500 });
+    const detail = err?.message || err?.toString() || 'Failed to call number.';
+    return NextResponse.json({ error: detail }, { status: 500 });
   }
 }
